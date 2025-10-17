@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+    
 module chip8_cpu (
     input wire clk,
     input wire reset,
@@ -24,14 +26,13 @@ module chip8_cpu (
     reg [11:0]    stack[0:15];
     reg [7:0]     opcode_fh;
     reg [7:0]     opcode_sh;
-    reg [7:0]     delay_timer,sound_timer;
+    reg [7:0]     delay_timer,sound_timer; 
     reg [20:0]    one_hz;
     reg [3:0]     i;
+//        reg [1:0]     draw_stage;  
     reg [3:0]     draw_row;
-    reg           waiting_for_key;    // NEW: Flag for FX0A
-    reg [15:0]    prev_key_pressed;   // NEW: Store previous key state
-
-
+    
+    
     localparam FETCH1 = 0;
     localparam FETCH1_WAIT = 1;
     localparam FETCH2 = 2;
@@ -42,11 +43,11 @@ module chip8_cpu (
     localparam STORE = 7;
     localparam RETRIEVE = 8;
     localparam RETRIEVE_WAIT = 9;
+//        localparam DRAW = 10;
     localparam DRAW_START = 10;
     localparam DRAW_INC = 11;
     localparam DRAW_FETCH = 12;
-    localparam WAIT_KEY = 13;         // NEW: State for waiting for key
-
+    
     always @(posedge clk or posedge reset) begin
         if(reset) begin
             pc <= 12'h200;
@@ -65,8 +66,6 @@ module chip8_cpu (
             draw_row <= 0;
             draw_row_index <= 0;
             sprite_data <= 8'd0;
-            waiting_for_key <= 0;      // NEW
-            prev_key_pressed <= 0;     // NEW
         end else begin
             if (one_hz == 833333) begin
                 one_hz <= 0;
@@ -77,72 +76,73 @@ module chip8_cpu (
             end else begin
                 one_hz <= one_hz + 1;
             end
-
+            
             if (collision) begin
-                V[15] <= 1;
+                V[15] <= 1;  
             end
 
             mem_read <= 0;
             mem_write <= 0;
-
+        
         case(state)
             FETCH1: begin
                 mem_addr_out <= pc;
                 mem_read <= 1;
                 state <= FETCH1_WAIT;
             end
-
+            
             FETCH1_WAIT: begin
                 state <= FETCH2;
             end
-
+            
             FETCH2: begin
                 opcode_fh <= mem_data_out;
                 mem_addr_out <= pc + 1;
                 mem_read <= 1;
                 state <= FETCH2_WAIT;
             end
-
+            
             FETCH2_WAIT: begin
                 state <= LASTFETCH;
             end
-
+            
             LASTFETCH: begin
                 opcode_sh <= mem_data_out;
+              //opcode <= {opcode_fh, opcode_sh};
                 state <= LASTFETCH_WAIT;
-            end
-
+            end 
+            
             LASTFETCH_WAIT: begin
                 opcode <= {opcode_fh, opcode_sh};
                 state <= EXECUTE;
             end
-
+            
             EXECUTE: begin
-                case(opcode[15:12])
+                case(opcode[15:12])                     
                     4'h6: begin
                         V[opcode[11:8]] <= opcode[7:0];
                         pc <= pc + 2;
                         state <= FETCH1;
                     end
-
+                    
                     4'h7: begin
                         V[opcode[11:8]] <= V[opcode[11:8]] + opcode[7:0];
                         pc <= pc + 2;
                         state <= FETCH1;
                     end
-
+                    
                     4'h1: begin
                         pc <= opcode[11:0];
                         state <= FETCH1;
-                    end
-
+                    end 
+                    
                     4'h2: begin
                         stack[pc_data] <= pc + 2;
                         pc <= opcode[11:0];
                         pc_data <= pc_data + 1;
                         state <= FETCH1;
                     end
-
+                    
                     4'h9: begin
                         if (V[opcode[11:8]] != V[opcode[7:4]])
                             pc <= pc + 4;
@@ -150,7 +150,7 @@ module chip8_cpu (
                             pc <= pc + 2;
                         state <= FETCH1;
                     end
-
+                    
                     4'h5: begin
                         if (V[opcode[11:8]] == V[opcode[7:4]])
                             pc <= pc + 4;
@@ -158,23 +158,23 @@ module chip8_cpu (
                             pc <= pc + 2;
                         state <= FETCH1;
                     end
-
+                    
                     4'h3: begin
                         if (V[opcode[11:8]] == opcode[7:0])
                             pc <= pc + 4;
-                        else
+                        else 
                             pc <= pc + 2;
                         state <= FETCH1;
                     end
-
+                    
                     4'h4: begin
                         if (V[opcode[11:8]] != opcode[7:0])
                             pc <= pc + 4;
-                        else
+                        else 
                             pc <= pc + 2;
                         state <= FETCH1;
                     end
-
+                    
                     4'h8: begin
                         case(opcode[3:0])
                             4'h0: begin
@@ -182,235 +182,188 @@ module chip8_cpu (
                                 pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
+                            
                             4'h1: begin
                                 V[opcode[11:8]] <= V[opcode[11:8]] | V[opcode[7:4]];
                                 pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
+                            
                             4'h2: begin
                                 V[opcode[11:8]] <= V[opcode[11:8]] & V[opcode[7:4]];
                                 pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
+                            
                             4'h3: begin
                                 V[opcode[11:8]] <= V[opcode[11:8]] & V[opcode[7:4]];
                                 pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
+                            
                             4'h4: begin
                                 {V[15],V[opcode[11:8]]} <= V[opcode[7:4]] + V[opcode[11:8]];
                                 pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
+                            
                             4'h5: begin
                                 {V[15],V[opcode[11:8]]} <= V[opcode[7:4]] - V[opcode[11:8]];
                                 pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
+                            
                             4'h6: begin
                                 V[opcode[11:8]] <= V[opcode[7:4]];
                                 V[opcode[11:8]] <= V[opcode[11:8]] >> 1;
                                 pc <= pc + 2;
                                 state <= FETCH1;
-                            end
-
+                            end 
+                            
                             4'h7: begin
                                 {V[15],V[opcode[11:8]]} <= V[opcode[11:8]] - V[opcode[7:4]];
                                 pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
+                            
                             4'hE: begin
                                 V[opcode[11:8]] <= V[opcode[7:4]];
                                 V[opcode[11:8]] <= V[opcode[11:8]] << 1;
                                 pc <= pc + 2;
                                 state <= FETCH1;
-                            end
+                            end                                
                         endcase
                     end
-
-                    4'hA: begin
+                    
+                    4'hA: begin 
                         I <= opcode[11:0];
                         pc <= pc + 2;
                         state <= FETCH1;
                     end
-
+                    
                     4'hB: begin
                         pc <= opcode[11:0];
                         V[opcode[11:8]] <= opcode[11:0];
                         state <= FETCH1;
                     end
-
+                    
                     4'hC: begin
                         V[opcode[11:8]] <= opcode[7:0] & $random;
                         pc <= pc + 2;
                         state <= FETCH1;
                     end
-
+                    
                     4'hE: begin
-                        case(opcode[7:0])
-                            8'h9E: begin  // EX9E - Skip if key pressed
+                        case(opcode[3:0])
+                            4'hE: begin
                                 if (key_pressed[V[opcode[11:8]]])
                                     pc <= pc + 4;
                                 else
                                     pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
-                            8'hA1: begin  // EXA1 - Skip if key NOT pressed
-                                if (!key_pressed[V[opcode[11:8]]])
+                            
+                            4'h1: begin
+                                if (key_pressed[V[opcode[11:8]]] != 1)
                                     pc <= pc + 4;
                                 else
                                     pc <= pc + 2;
                                 state <= FETCH1;
                             end
-                            
-                            default: begin
-                                pc <= pc + 2;
-                                state <= FETCH1;
-                            end
-                        endcase
-                    end
-
+                        endcase        
+                    end    
+                    
                     4'hF: begin
                         case(opcode[7:0])
                             8'h07: begin
                                 V[opcode[11:8]] <= delay_timer;
                                 pc <= pc + 2;
-                                state <= FETCH1;
+                                state <= FETCH1; 
                             end
-
-                            8'h0A: begin  // FX0A - Wait for key press (IMPLEMENTED!)
-                                waiting_for_key <= 1;
-                                prev_key_pressed <= key_pressed;
-                                state <= WAIT_KEY;
-                            end
-
+                            
+                            8'h0A: begin       // TO BE DONE 
+                                pc <= pc + 2;  // TO BE DONE 
+                            end                // TO BE DONE 
+                            
                             8'h15: begin
                                 delay_timer <= V[opcode[11:8]];
                                 pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
+                            
                             8'h18: begin
                                 sound_timer <= V[opcode[11:8]];
                                 pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
+                            
                             8'h1E: begin
                                 I <= I + V[opcode[11:8]];
                                 pc <= pc + 2;
                                 state <= FETCH1;
                             end
-
-                            8'h29: begin  // FX29 - Set I to sprite location
-                                I <= {8'h00, V[opcode[11:8]][3:0]} * 5;
-                                pc <= pc + 2;
-                                state <= FETCH1;
-                            end
-
-                            8'h33: begin  // FX33 - BCD conversion
-                                mem_addr_out <= I;
-                                mem_data_in <= V[opcode[11:8]] / 100;
-                                mem_write <= 1;
-                                
-                                mem_addr_out <= I + 1;
-                                mem_data_in <= (V[opcode[11:8]] / 10) % 10;
-                                
-                                mem_addr_out <= I + 2;
-                                mem_data_in <= V[opcode[11:8]] % 10;
-                                
-                                pc <= pc + 2;
-                                state <= FETCH1;
-                            end
-
+                            
+                            8'h29: begin        // TO BE DONE 
+                                pc <= pc + 2;   // TO BE DONE
+                            end                 // TO BE DONE 
+                            
+                            8'h33: begin        // TO BE DONE
+                                pc <= pc + 2;   // TO BE DONE
+                            end                 // TO BE DONE 
+                            
                             8'h55: begin
                                 i <= 0;
                                 state <= STORE;
                             end
-
+                            
                             8'h65: begin
                                 i <= 0;
                                 state <= RETRIEVE;
-                            end
-
+                            end 
+                            
                         endcase
                     end
-
+                    
                     4'hD: begin
+                    
                         draw_row <= 0;
                         draw_row_index <= 0;
+                        
                         mem_read <= 1;
                         mem_addr_out <= I;
-                        state <= DRAW_START;
+                        
+                        state <= DRAW_START; 
                     end
-
+                    
+                    
                     4'h0: begin
                         case(opcode[3:0])
                             4'h0: begin
                                 pc <= pc + 2;
                                 state <= FETCH1;
-                            end
-
+                            end 
+                            
                             4'hE: begin
                                 pc <= stack[pc_data - 1];
                                 pc_data <= pc_data - 1;
                                 state <= FETCH1;
                             end
-                        endcase
+                        endcase     
                     end
-
+                    
                     default: begin
                         pc <= pc + 2;
                         state <= FETCH1;
                     end
-
-                endcase
+                    
+                endcase 
             end
-
-            // NEW STATE: Wait for key press (FX0A implementation)
-            WAIT_KEY: begin
-                if (key_pressed != 16'h0000) begin
-                    // A key is currently pressed, check if it's newly pressed
-                    if (prev_key_pressed == 16'h0000) begin
-                        // Find which key was pressed and store it in VX
-                        if (key_pressed[0]) V[opcode[11:8]] <= 4'h0;
-                        else if (key_pressed[1]) V[opcode[11:8]] <= 4'h1;
-                        else if (key_pressed[2]) V[opcode[11:8]] <= 4'h2;
-                        else if (key_pressed[3]) V[opcode[11:8]] <= 4'h3;
-                        else if (key_pressed[4]) V[opcode[11:8]] <= 4'h4;
-                        else if (key_pressed[5]) V[opcode[11:8]] <= 4'h5;
-                        else if (key_pressed[6]) V[opcode[11:8]] <= 4'h6;
-                        else if (key_pressed[7]) V[opcode[11:8]] <= 4'h7;
-                        else if (key_pressed[8]) V[opcode[11:8]] <= 4'h8;
-                        else if (key_pressed[9]) V[opcode[11:8]] <= 4'h9;
-                        else if (key_pressed[10]) V[opcode[11:8]] <= 4'hA;
-                        else if (key_pressed[11]) V[opcode[11:8]] <= 4'hB;
-                        else if (key_pressed[12]) V[opcode[11:8]] <= 4'hC;
-                        else if (key_pressed[13]) V[opcode[11:8]] <= 4'hD;
-                        else if (key_pressed[14]) V[opcode[11:8]] <= 4'hE;
-                        else if (key_pressed[15]) V[opcode[11:8]] <= 4'hF;
-                        
-                        waiting_for_key <= 0;
-                        pc <= pc + 2;
-                        state <= FETCH1;
-                    end
-                end
-                prev_key_pressed <= key_pressed;
-            end
-
-            STORE: begin
+          
+            STORE: begin 
                 mem_addr_out <= I + i;
                 mem_data_in <= V[i];
                 mem_write <= 1;
-
+                
                 if (i == opcode[11:8]) begin
                     pc <= pc + 2;
                     state <= FETCH1;
@@ -419,39 +372,42 @@ module chip8_cpu (
                     state <= STORE;
                 end
             end
-
+            
             RETRIEVE: begin
                 if(i <= opcode[11:8]) begin
                     mem_addr_out <= I + i;
                     mem_read <= 1;
-                    state <= RETRIEVE_WAIT;
                 end
-                else begin
+                else begin  
                     pc <= pc + 2;
                     state <= FETCH1;
                 end
             end
-
+                
             RETRIEVE_WAIT: begin
-                V[i] <= mem_data_out;
-                i <= i + 1;
-                state <= RETRIEVE;
-            end
-
-            DRAW_INC: begin
+              V[i] <= mem_data_out;
+              i <= i + 1;
+              state <= RETRIEVE;  
+            end 
+            
+            
+//                DRAW: begin
+//                    case(draw_stage)
+                    
+            DRAW_INC: begin  
                 draw <= 0;
                 draw_row <= draw_row + 1;
-
+                 
                 if (draw_row == opcode[3:0] - 1) begin
-                    pc <= pc + 2;
+                    pc <= pc + 2;   
                     state <= FETCH1;
                 end else begin
                     mem_addr_out <= I + draw_row + 1;
                     mem_read <= 1;
                     state <= DRAW_FETCH;
-                end
+                end  
             end
-
+            
             DRAW_START: begin
                 draw <= 1;
                 x <= V[opcode[11:8]][5:0];
@@ -459,11 +415,11 @@ module chip8_cpu (
                 draw_row_index <= draw_row;
                 state <= DRAW_INC;
             end
-
+            
             DRAW_FETCH: begin
                 sprite_data <= mem_data_out;
                 state <= DRAW_START;
-            end
+            end               
         endcase
       end
     end
