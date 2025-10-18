@@ -18,11 +18,10 @@ module chip8_top_testbench();
     always #10 clock = ~clock;
 
     initial begin
-
         key_pressed = 16'd0;
         reset = 1;
-        
-        $monitor("Time=%0t | PC=%h | State=%d | Opcode=%h | I_reg=%h | V0=%h V1=%h VA=%h VB=%h | mem_addr_out=%h | mem_data_in = %h | mem_data_out = %h | mem_read = %h | mem_write = %h",
+
+        $monitor("Time=%0t | PC=%h | State=%d | Opcode=%h | I=%h | V0=%h V1=%h VA=%h VB=%h | mem_addr_out=%h | mem_data_in=%h | mem_data_out=%h | mem_read=%b | mem_write=%b | Draw=%b | Collision=%b",
                  $time,
                  DUT.cpu.pc,           
                  DUT.cpu.state,        
@@ -36,14 +35,15 @@ module chip8_top_testbench();
                  DUT.cpu.mem_data_in,
                  DUT.cpu.mem_data_out,
                  DUT.cpu.mem_read,
-                 DUT.cpu.mem_write
+                 DUT.cpu.mem_write,
+                 DUT.cpu.draw,
+                 DUT.cpu.V[15]
         );
-        
+
         #20;
         reset = 0;
-        
-        #10000;
+
+        #50000;  
         $finish;
     end
-
 endmodule

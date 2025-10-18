@@ -15,8 +15,10 @@ module chip8_top(
     wire [11:0] mem_addr_out;
     wire mem_read,mem_write;
     wire draw;
-    reg [2047:0] display_now;
-    wire [2047:0] display_after;
+    reg [7:0] display_mem[0:255];
+    wire [7:0] display_out_byte;
+    wire [7:0] display_addr;
+    wire display_done;
     
     
     chip8_cpu cpu(.clk(clk),.reset(reset),.mem_data_in(mem_data_in),.key_pressed(key_pressed),.mem_read(mem_read),.mem_addr_out(mem_addr_out),.mem_data_out(mem_data_out),.mem_write(mem_write),.draw(draw),.x(x),.y(y),.sprite_data(sprite_data),.draw_row_index(draw_row_index));
